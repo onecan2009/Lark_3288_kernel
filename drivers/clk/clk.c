@@ -1446,7 +1446,7 @@ int clk_set_rate(struct clk *clk, unsigned long rate)
 
 	if (!clk)
 		return 0;
-    printk("in %s()\n",__FUNCTION__);
+    //printk("in %s()\n",__FUNCTION__);
     
 	/* prevent racing with updates to the clock topology */
 	clk_prepare_lock();

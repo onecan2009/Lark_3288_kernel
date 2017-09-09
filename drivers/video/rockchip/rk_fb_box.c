@@ -2811,7 +2811,7 @@ static void fb_show_bmp_logo(struct fb_info *info, int rotate)
 	int i;
 	unsigned int Needwidth = (*(src - 24) << 8) | (*(src - 23));
 	unsigned int Needheight = (*(src - 22) << 8) | (*(src - 21));
-
+    
 	for (i = 0; i < Needheight; i++)
 		memcpy(dst + info->var.xres * i * 4,
 		       src + bmp_logo->width * i * 4, Needwidth * 4);

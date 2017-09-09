@@ -505,9 +505,9 @@
 			<&aclk_peri &clk_gpll>,	<&uart_pll_mux &clk_gpll>,
 			<&clk_i2s_pll &clk_gpll>, <&clk_spdif_pll &clk_gpll>,
 			<&usbphy_480m &otgphy2_480m>;
-		rockchip,clocks-init-rate =
+		rockchip,clocks-init-rate =		
 			<&clk_core 216000000>,	<&clk_gpll 600000000>,//box changed
-			<&clk_cpll 29700000>,	<&clk_npll 1250000000>,
+			/*<&clk_cpll 29700000>,*/	<&clk_npll 1250000000>,
 			<&aclk_bus_src 300000000>,	<&aclk_bus 300000000>,
 			<&hclk_bus 150000000>,	<&pclk_bus 75000000>,
 			<&clk_crypto 150000000>,	<&aclk_peri 300000000>,

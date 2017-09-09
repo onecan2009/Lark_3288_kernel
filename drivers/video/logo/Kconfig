@@ -82,4 +82,5 @@ config LOGO_M32R_CLUT224
 	depends on M32R
 	default y
 
+
 endif # LOGO

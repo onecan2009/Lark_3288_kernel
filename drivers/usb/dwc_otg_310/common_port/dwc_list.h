@@ -535,6 +535,18 @@ struct {								\
 	(listelm)->field.cqe_next = (elm);				\
 } while (0)
 
+#define DWC_CIRCLEQ_INSERT_COM(head, listelm, elm, field, com) do { \
+    DWC_CIRCLEQ_FOREACH(listelm, head, field) { \
+    if ((elm)->com < (listelm)->com) { \
+        DWC_CIRCLEQ_INSERT_BEFORE(head, listelm, elm, field); \
+        break; \
+    } else \
+        continue; \
+    } \
+    if (DWC_CIRCLEQ_PREV(listelm, field) != elm) \
+        DWC_CIRCLEQ_INSERT_TAIL(head, elm, field); \
+} while (0)
+
 #define DWC_CIRCLEQ_INSERT_BEFORE(head, listelm, elm, field) do {	\
 	(elm)->field.cqe_next = (listelm);				\
 	(elm)->field.cqe_prev = (listelm)->field.cqe_prev;		\

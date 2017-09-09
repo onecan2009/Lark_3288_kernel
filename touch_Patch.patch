@@ -1,0 +1,48 @@
+drivers/usb/dwc_otg_310/common_port/dwc_list.h | 12 ++++++++++++
+drivers/usb/dwc_otg_310/dwc_otg_hcd_intr.c | 3 ++-
+2 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/dwc_otg_310/common_port/dwc_list.h b/drivers/usb/dwc_otg_310/common_port/dwc_list.h
+index 46f1da3..e20124b 100755
+--- a/drivers/usb/dwc_otg_310/common_port/dwc_list.h
++++ b/drivers/usb/dwc_otg_310/common_port/dwc_list.h
+@@ -565,6 +565,18 @@ struct { \
+(head)->cqh_last = (elm); \
+} while (0)
+
++#define DWC_CIRCLEQ_INSERT_COM(head, listelm, elm, field, com) do { \
++ DWC_CIRCLEQ_FOREACH(listelm, head, field) { \
++ if ((elm)->com < (listelm)->com) { \
++ DWC_CIRCLEQ_INSERT_BEFORE(head, listelm, elm, field); \
++ break; \
++ } else \
++ continue; \
++ } \
++ if (DWC_CIRCLEQ_PREV(listelm, field) != elm) \
++ DWC_CIRCLEQ_INSERT_TAIL(head, elm, field); \
++} while (0)
++
+#define DWC_CIRCLEQ_REMOVE(head, elm, field) do { \
+if ((elm)->field.cqe_next == DWC_CIRCLEQ_END(head)) \
+(head)->cqh_last = (elm)->field.cqe_prev; \
+diff --git a/drivers/usb/dwc_otg_310/dwc_otg_hcd_intr.c b/drivers/usb/dwc_otg_310/dwc_otg_hcd_intr.c
+index 09197ce..07f27f3 100755
+--- a/drivers/usb/dwc_otg_310/dwc_otg_hcd_intr.c
++++ b/drivers/usb/dwc_otg_310/dwc_otg_hcd_intr.c
+@@ -834,6 +834,7 @@ static void release_channel(dwc_otg_hcd_t *hcd,
+dwc_otg_transaction_type_e tr_type;
+int free_qtd;
+int continue_trans = 1;
++ dwc_hc_t *hc_tmp = NULL;
+
+DWC_DEBUGPL(DBG_HCDV, " %s: channel %d, halt_status %d\n",
+__func__, hc->hc_num, halt_status);
+@@ -914,7 +915,7 @@ cleanup:
+* there's no need to clear the Channel Halted interrupt separately.
+*/
+dwc_otg_hc_cleanup(hcd->core_if, hc);
+- DWC_CIRCLEQ_INSERT_TAIL(&hcd->free_hc_list, hc, hc_list_entry);
++ DWC_CIRCLEQ_INSERT_COM(&hcd->free_hc_list, hc_tmp, hc, hc_list_entry, hc_num);
+
+switch (hc->ep_type) {
+case DWC_OTG_EP_TYPE_CONTROL:

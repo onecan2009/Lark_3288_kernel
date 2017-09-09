@@ -833,7 +833,8 @@ static void release_channel(dwc_otg_hcd_t *hcd,
 	dwc_otg_transaction_type_e tr_type;
 	int free_qtd;
 	int continue_trans = 1;
-
+    dwc_hc_t *hc_tmp = NULL;
+    
 	DWC_DEBUGPL(DBG_HCDV, "  %s: channel %d, halt_status %d\n",
 		    __func__, hc->hc_num, halt_status);
 
@@ -893,8 +894,9 @@ cleanup:
 	 * there's no need to clear the Channel Halted interrupt separately.
 	 */
 	dwc_otg_hc_cleanup(hcd->core_if, hc);
-	DWC_CIRCLEQ_INSERT_TAIL(&hcd->free_hc_list, hc, hc_list_entry);
-
+	//DWC_CIRCLEQ_INSERT_TAIL(&hcd->free_hc_list, hc, hc_list_entry);
+    DWC_CIRCLEQ_INSERT_COM(&hcd->free_hc_list, hc_tmp, hc, hc_list_entry, hc_num);
+    
 	switch (hc->ep_type) {
 	case DWC_OTG_EP_TYPE_CONTROL:
 	case DWC_OTG_EP_TYPE_BULK:

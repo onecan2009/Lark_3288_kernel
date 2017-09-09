@@ -447,6 +447,11 @@ static void fb_do_show_logo(struct fb_info *info, struct fb_image *image,
 	}
 }
 
+#define fb_writeb(b,addr) (*(volatile u8 *) (addr) = (b))
+#define fb_writew(b,addr) (*(volatile u16 *) (addr) = (b))
+#define fb_writel(b,addr) (*(volatile u32 *) (addr) = (b))
+#define fb_writeq(b,addr) (*(volatile u64 *) (addr) = (b))
+
 static int fb_show_logo_line(struct fb_info *info, int rotate,
 			     const struct linux_logo *logo, int y,
 			     unsigned int n)
@@ -454,7 +459,7 @@ static int fb_show_logo_line(struct fb_info *info, int rotate,
 	u32 *palette = NULL, *saved_pseudo_palette = NULL;
 	unsigned char *logo_new = NULL, *logo_rotate = NULL;
 	struct fb_image image;
-
+ 
 	/* Return if the frame buffer is not mapped or suspended */
 	if (logo == NULL || info->state != FBINFO_STATE_RUNNING ||
 	    info->flags & FBINFO_MODULE)
@@ -497,8 +502,8 @@ static int fb_show_logo_line(struct fb_info *info, int rotate,
 	image.dy = y;
 	image.width = logo->width;
 	image.height = logo->height;
-
-	if (rotate) {
+    
+    if (rotate) {
 		logo_rotate = kmalloc(logo->width *
 				      logo->height, GFP_KERNEL);
 		if (logo_rotate)
