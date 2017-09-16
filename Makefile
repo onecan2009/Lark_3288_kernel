@@ -391,7 +391,9 @@ KBUILD_CFLAGS_MODULE  := -DMODULE
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
-KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
+#KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
+# 这里直接截断是为了避免内核编译导致发行版本的更迭影响以前的编译完成的驱动无法加载的问题，注意“3.10.0”后面不能有空格
+KERNELRELEASE = "3.10.0"
 KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
 
 export VERSION PATCHLEVEL SUBLEVEL KERNELRELEASE KERNELVERSION

@@ -2157,7 +2157,7 @@ void __init rkclk_init_clks(struct device_node *np)
 		if (clk_name==NULL)
 			continue;
 
-		if (uboot_logo_on && rkclk_uboot_has_init(np, clk_name)) {
+		if (rkclk_uboot_has_init(np, clk_name) && uboot_logo_on) {
 			printk("%s: %s has been inited in uboot, ingored\n", 
 				__FUNCTION__, clk_name);
 			continue;

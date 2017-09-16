@@ -66,6 +66,7 @@ static struct rk_fb_trsm_ops *trsm_edp_ops;
 static struct rk_fb_trsm_ops *trsm_mipi_ops;
 static int uboot_logo_on;
 extern char *disppara ;
+extern int bRotate;
 int support_uboot_display(void)
 {
     return 0;
@@ -378,56 +379,59 @@ int rk_fb_video_mode_from_timing(const struct display_timing *dt,
  * 1366x768 [4]
  * 1440x900 [5] 
  * */
-int parse_disp(char *disppara)
+ static char* lcd_dts_timings[] = {
+    "1280x720",
+    "1920x1080",
+    "3840x2160",
+    "1024x768",
+    "1366x768",
+    "1440x900"
+    };
+
+static int parse_disp(char *disppara)
 {
-		printk("%s(),disp is %s\n",__func__,disppara);
-		/*  
-		 * 假设没有解析出参数区的分辨率参数，
-		 * 则设成1024x768，native-mode = 3
-		 */
-		if(disppara == NULL)
-		{
-				printk("disp is  NULL,disp setup default 1024x768\n");
-				return 3;
-		}
-		else
-		{
-				if(strcmp(disppara,"1280x720") == 0)
-				{
-					return 0;
-				}
-				else if(strcmp(disppara,"1920x1080") == 0)
-				{
-					return 1;
-				}
-				else if(strcmp(disppara,"3840x2160") == 0)
-				{
-					return 2;
-				}
-				else if(strcmp(disppara,"1024x768") == 0)
-				{
-					return 3;
-				}
-				else if(strcmp(disppara,"1366x768") == 0)
-				{
-					return 4;
-				}
-				else if(strcmp(disppara,"1440x900") == 0)
-				{
-					return 5;
-				}
-				else   
-				{
-						/*
-						 * 若参数区的分辨率参数不是一个常规的设置，
-						 * 则设置成默认分辨率1024x768,native-mode=3
-						 */
-						return 3;
-				}
-				
-			
-		}
+    int i = 0;
+    printk("%s(),disp is %s\n",__func__,disppara);
+    /*  
+     * 假设没有解析出参数区的分辨率参数，
+     * 则设成1024x768，native-mode = 3
+     */
+    if(disppara == NULL)
+    {
+            printk("disp is  NULL,disp setup default 1024x768\n");
+            return 3;
+    }
+    else
+    {
+        for(i = 0;i < sizeof(lcd_dts_timings)/sizeof(lcd_dts_timings[0]);i++)
+        {
+            if(strcmp(disppara,lcd_dts_timings[i]) == 0)
+            {
+                return i;
+            }
+        }
+        
+        printk("disp is parse error,disp setup default 1024x768\n");
+        return 3;
+    }
 }
+
+int Is_Screen_Rotate(void)
+{
+    printk("in %s()\n",__func__);
+    if(bRotate == 1)
+    {
+        printk("the screen is rotated....\n");
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+
+}
+
+
 int rk_fb_prase_timing_dt(struct device_node *np, struct rk_screen *screen)
 {
 	struct display_timings *disp_timing;
@@ -437,10 +441,16 @@ int rk_fb_prase_timing_dt(struct device_node *np, struct rk_screen *screen)
 		pr_err("parse display timing err\n");
 		return -EINVAL;
 	}
+    /*
+    * according to the dispara
+    * set fb_buffer native-mode value  
+    * add by sampson
+    */
 	printk("%s(),%dline,the disp_timing->native_mode is %d,disp_timing->num_timings is %d\n",__func__,__LINE__,disp_timing->native_mode,disp_timing->num_timings);
 	disp_timing->native_mode = parse_disp(disppara);
 	dt = display_timings_get(disp_timing, disp_timing->native_mode);
-	printk("%s(),disp_timing->native_mode is %d\n",__func__,disp_timing->native_mode );
+    printk("%s(),disp_timing->native_mode is %d,the resolution is %s\n",\
+            __func__,disp_timing->native_mode,lcd_dts_timings[disp_timing->native_mode]);
 	rk_fb_video_mode_from_timing(dt, screen);
 	return 0;
 
@@ -2105,6 +2115,31 @@ static ssize_t rk_fb_write(struct fb_info *info, const char __user *buf,
 
 }
 
+/////
+static int rk_fb_white(struct fb_info *info)
+{
+    printk("in %s()\n",__func__);
+    
+	struct rk_lcdc_driver *dev_drv = (struct rk_lcdc_driver *)info->par;
+	int win_id = dev_drv->ops->fb_get_win_id(dev_drv, info->fix.id);
+	struct rk_lcdc_win *win;
+    volatile int ty = 0;
+    volatile int tx = 0;
+        
+	win = dev_drv->win[win_id];
+    printk("win->area[0].dma_buf is %p\n",win->area[0].dma_buf);
+    for(ty = 0;ty < 768 ;ty++)
+    {
+        for(tx = 0;tx < 1024 ;tx++)
+        {
+            *(volatile u8 __iomem*)(win->area[0].dma_buf + tx*768+ty) = 0xff;
+        }
+    }
+
+	return 0;
+}
+/////
+
 static int rk_fb_set_par(struct fb_info *info)
 {
 	struct fb_var_screeninfo *var = &info->var;
@@ -2143,6 +2178,7 @@ static int rk_fb_set_par(struct fb_info *info)
            xres = var->xres;
            yres = var->yres;
         }
+ 
        //$_rbox_$_modify_$_qiuen end
 	var->pixclock = dev_drv->pixclock;
 	win_id = dev_drv->ops->fb_get_win_id(dev_drv, info->fix.id);
@@ -2977,6 +3013,10 @@ int rk_fb_register(struct rk_lcdc_driver *dev_drv,
 			fb_show_bmp_logo(main_fbi, FB_ROTATE_UR);
 		}
 #else
+        //white
+        //rk_fb_white(main_fbi);
+        
+        
 		if (fb_prepare_logo(main_fbi, FB_ROTATE_UR)) {
 			fb_set_cmap(&main_fbi->cmap, main_fbi);
 			fb_show_logo(main_fbi, FB_ROTATE_UR);

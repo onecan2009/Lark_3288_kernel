@@ -21,6 +21,8 @@
 #include <asm/bootinfo.h>
 #endif
 
+extern int Is_Screen_Rotate(void);
+extern char * disppara;
 static bool nologo;
 module_param(nologo, bool, 0);
 MODULE_PARM_DESC(nologo, "Disables startup logo");
@@ -63,10 +65,94 @@ const struct linux_logo * __init_refok fb_find_logo(int depth)
 	}
 	
 	if (depth >= 8) {
-#ifdef CONFIG_LOGO_LINUX_CLUT224
-		/* Generic Linux logo */
-		logo = &logo_linux_clut224;
-#endif
+        if(strcmp(disppara,"1024x768") == 0)
+        {
+            #ifdef CONFIG_LOGO_LINUX_CLUT224
+                /* Generic Linux logo */
+                logo = &logo_linux_clut224;
+            #endif
+            /*add rotate log when screen rotate 90 left by Sampson*/
+            #ifdef CONFIG_LOGO_CCW_LINUX_CLUT224
+                /* rotate Linux logo */
+                /*TODO :There will be a judgment here for the screen rotation*/
+                if(Is_Screen_Rotate())
+                {
+                    logo = &logo_ccw_linux_clut224;
+                }
+                    
+            #endif
+        }
+        else if(strcmp(disppara,"1366x768") == 0)
+        {
+            #ifdef CONFIG_LOGO_1366_LINUX_CLUT224
+                /* rotate Linux logo */
+                /*TODO :There will be a judgment here for the screen rotation*/
+                logo = &logo_1366_linux_clut224;
+            #endif
+            #ifdef CONFIG_LOGO_1366_CCW_LINUX_CLUT224
+                /* rotate Linux logo */
+                /*TODO :There will be a judgment here for the screen rotation*/
+                if(Is_Screen_Rotate())
+                {
+                logo = &logo_1366_ccw_linux_clut224;
+                }
+            #endif
+        
+        }
+        else if(strcmp(disppara,"1280x720") == 0)
+        {
+            #ifdef CONFIG_LOGO_1280_LINUX_CLUT224
+                /* rotate Linux logo */
+                /*TODO :There will be a judgment here for the screen rotation*/
+                logo = &logo_1280_linux_clut224;
+            #endif
+            #ifdef CONFIG_LOGO_1280_CCW_LINUX_CLUT224
+                /* rotate Linux logo */
+                /*TODO :There will be a judgment here for the screen rotation*/
+                if(Is_Screen_Rotate())
+                {
+                logo = &logo_1280_ccw_linux_clut224;
+                }
+            #endif
+        
+        }
+        else if(strcmp(disppara,"1440x900") == 0)
+        {
+            #ifdef CONFIG_LOGO_1440_LINUX_CLUT224
+                /* rotate Linux logo */
+                /*TODO :There will be a judgment here for the screen rotation*/
+                logo = &logo_1440_linux_clut224;
+            #endif
+            #ifdef CONFIG_LOGO_1440_CCW_LINUX_CLUT224
+                /* rotate Linux logo */
+                /*TODO :There will be a judgment here for the screen rotation*/
+                if(Is_Screen_Rotate())
+                {
+                logo = &logo_1440_ccw_linux_clut224;
+                }
+            #endif
+        
+        }
+        else if(strcmp(disppara,"1920x1080") == 0)
+        {
+            #ifdef CONFIG_LOGO_1920_LINUX_CLUT224
+                /* rotate Linux logo */
+                /*TODO :There will be a judgment here for the screen rotation*/
+                logo = &logo_1920_linux_clut224;
+            #endif
+            #ifdef CONFIG_LOGO_1920_CCW_LINUX_CLUT224
+                /* rotate Linux logo */
+                /*TODO :There will be a judgment here for the screen rotation*/
+                if(Is_Screen_Rotate())
+                {
+                    logo = &logo_1920_ccw_linux_clut224;
+                }
+            #endif
+        
+        }
+
+
+
 #ifdef CONFIG_LOGO_BLACKFIN_CLUT224
 		/* Blackfin Linux logo */
 		logo = &logo_blackfin_clut224;

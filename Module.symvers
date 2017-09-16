@@ -2983,6 +2983,7 @@
 0x00000000	try_to_free_buffers	vmlinux	EXPORT_SYMBOL
 0x00000000	wait_iff_congested	vmlinux	EXPORT_SYMBOL
 0x00000000	__put_cred	vmlinux	EXPORT_SYMBOL
+0x00000000	bRotate	vmlinux	EXPORT_SYMBOL
 0x00000000	ping_getfrag	vmlinux	EXPORT_SYMBOL_GPL
 0x00000000	dm_path_uevent	vmlinux	EXPORT_SYMBOL_GPL
 0x00000000	register_framebuffer	vmlinux	EXPORT_SYMBOL

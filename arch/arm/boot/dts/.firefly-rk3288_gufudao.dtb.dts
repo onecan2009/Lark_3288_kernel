@@ -6040,7 +6040,7 @@
 # 569 "arch/arm/boot/dts/firefly-rk3288_gufudao.dts"
 &fb {
  rockchip,disp-mode = <2>;
- rockchip,uboot-logo-on= <0>;
+ rockchip,uboot-logo-on= <1>;
 };
 
 &rk_screen {

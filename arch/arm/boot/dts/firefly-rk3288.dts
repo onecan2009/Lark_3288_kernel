@@ -567,6 +567,7 @@
 /*lcdc0 as PRMRY(HDMI),lcdc1 as EXTEND(RK1000)*/
 &lcdc0 {
 	status = "okay";
+	rockchip,iommu-enabled = <1>;
 	rockchip,prop = <PRMRY>;
 };
 
