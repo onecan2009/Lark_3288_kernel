@@ -4829,7 +4829,6 @@
 0x00000000	udp_proc_register	vmlinux	EXPORT_SYMBOL
 0x00000000	kernel_sendpage	vmlinux	EXPORT_SYMBOL
 0x00000000	usb_gstrings_attach	vmlinux	EXPORT_SYMBOL_GPL
-0x00000000	eth_mac_idb	vmlinux	EXPORT_SYMBOL
 0x00000000	dev_pm_qos_remove_global_notifier	vmlinux	EXPORT_SYMBOL_GPL
 0x00000000	nfs_access_add_cache	vmlinux	EXPORT_SYMBOL_GPL
 0x00000000	delete_from_page_cache	vmlinux	EXPORT_SYMBOL

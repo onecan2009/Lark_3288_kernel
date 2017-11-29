@@ -332,7 +332,7 @@ static ssize_t show_dsp_bcsh(struct device *dev,
 	sin_hue = dev_drv->ops->get_dsp_bcsh_hue(dev_drv,H_SIN);
 	cos_hue = dev_drv->ops->get_dsp_bcsh_hue(dev_drv,H_COS);
 
-	snprintf(buf, PAGE_SIZE, "brightness:%4d,contrast:%4d,sat_con:%4d,"
+	return snprintf(buf, PAGE_SIZE, "brightness:%4d,contrast:%4d,sat_con:%4d,"
 				 "sin_hue:%4d,cos_hue:%4d\n",
 				 brightness, contrast,sat_con,sin_hue,cos_hue);
 	return 0;

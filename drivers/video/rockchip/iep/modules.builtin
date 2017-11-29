@@ -1,0 +1,2 @@
+kernel/drivers/video/rockchip/iep/hw_iep_reg.ko
+kernel/drivers/video/rockchip/iep/iep_drv.ko

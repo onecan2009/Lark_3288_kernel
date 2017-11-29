@@ -28,6 +28,7 @@
 	https://bugzilla.stlinux.com/
 *******************************************************************************/
 
+#include <linux/gpio.h>
 #include <linux/clk.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
@@ -51,13 +52,6 @@
 #include "stmmac_ptp.h"
 #include "stmmac.h"
 #include "../eth_mac.h"
-
-#define PUNGO_DRIVER	//terry 2015-9-30
-//#undef PUNGO_DRIVER
-
-#ifdef PUNGO_DRIVER
-#include "../pungo/PungoDriver/gmac.h"
-#endif
 
 #undef STMMAC_DEBUG
 /*#define STMMAC_DEBUG*/
@@ -161,19 +155,6 @@ static void stmmac_exit_fs(void);
  * Description: it verifies if some wrong parameter is passed to the driver.
  * Note that wrong parameters are replaced with the default values.
  */
- struct net_device *ndev = NULL;//terry 2015-9-22
- extern Device_t *g_Device;
- #if 0
- unsigned char	APRDSendBuf[56] = {0xff,0xff,0xff,0xff,0xff,0xff,0x00,0x88,0xa4,0x00,0x00,0x11,0x88,0xa4,							   
-																	0x0d,0x10,0x01,0x00,0x00,0x00,0x00,0x09,							   
-																	0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x00,							   
-																	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,							   
-																	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,							   
-																	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,							   
-																	0x00,0x00};
-#define ETHERCAT_MAX_PACKET_LENGTH 1024
-#endif
-																				
 static void stmmac_verify_args(void)
 {
 	if (unlikely(watchdog < 0))
@@ -702,6 +683,9 @@ static void stmmac_release_ptp(struct stmmac_priv *priv)
 	stmmac_ptp_unregister(priv);
 }
 
+static int g_bmcr = 0;
+static int g_bmcr_change = 0;
+
 /**
  * stmmac_adjust_link
  * @dev: net device structure
@@ -714,6 +698,7 @@ static void stmmac_adjust_link(struct net_device *dev)
 	unsigned long flags;
 	int new_state = 0;
 	unsigned int fc = priv->flow_ctrl, pause_time = priv->pause;
+	struct bsp_priv *bsp_priv = priv->plat->bsp_priv;
 
 	if (phydev == NULL)
 		return;
@@ -722,6 +707,30 @@ static void stmmac_adjust_link(struct net_device *dev)
 	    phydev->addr, phydev->link);
 
 	spin_lock_irqsave(&priv->lock, flags);
+
+	bsp_priv->link = phydev->link;
+	if ((bsp_priv->chip == RK322X_GMAC ||
+	     bsp_priv->chip == RK322XH_GMAC) &&
+	    (bsp_priv->internal_phy) &&
+	    (phydev->link != priv->oldlink)) {
+		if (phydev->link) {
+			if (gpio_is_valid(bsp_priv->link_io))
+				/* link LED on */
+				gpio_direction_output(bsp_priv->link_io,
+						      bsp_priv->link_io_level);
+		} else {
+			if (priv->speed == 10 && g_bmcr_change) {
+				/* restore MII_BMCR */
+				phy_write(phydev, MII_BMCR, g_bmcr);
+                                g_bmcr_change = 0;
+			}
+
+			if (gpio_is_valid(bsp_priv->link_io))
+				/* link LED off */
+				gpio_direction_output(bsp_priv->link_io,
+						      !bsp_priv->link_io_level);
+		}
+	}
 
 	if (phydev->link) {
 		u32 ctrl = readl(priv->ioaddr + MAC_CTRL_REG);
@@ -762,6 +771,29 @@ static void stmmac_adjust_link(struct net_device *dev)
 					ctrl &= ~priv->hw->link.port;
 				}
 				stmmac_hw_fix_mac_speed(priv);
+
+				if ((bsp_priv->chip == RK322X_GMAC ||
+				     bsp_priv->chip == RK322XH_GMAC) &&
+				    (bsp_priv->internal_phy) &&
+				    (phydev->speed == 10)) {
+					int an_expan;
+
+					an_expan = phy_read(phydev,
+							    MII_EXPANSION);
+					/* link partner does not have */
+					/* auto-negotiation ability, setting */
+					/* PHY to 10M full-duplex by force */
+					if (!(an_expan & 0x1) &&
+					    (phydev->speed == 10)) {
+						g_bmcr = phy_read(phydev,
+								  MII_BMCR);
+						pr_info("10BT-no auto-neg\n");
+						phy_write(phydev, MII_BMCR,
+							  0x100);
+                                                g_bmcr_change = 1;
+					}
+				}
+
 				break;
 			default:
 				if (netif_msg_link(priv))
@@ -907,6 +939,73 @@ int gmac_remove_sysfs(struct phy_device * phy_dev) {
 	return 0;
 }
 
+#define NET_FLASH_TIME                  (HZ/10) /* 100 ms */
+#define NET_FLASH_PAUSE                (HZ/10) /* 100 ms */
+
+static void
+gmac_set_network_leds(struct bsp_priv *bsp_priv, int active)
+{
+	if ((bsp_priv->internal_phy) && (gpio_is_valid(bsp_priv->led_io))) {
+		if (active) {
+			/* LED on */
+			gpio_set_value(bsp_priv->led_io,
+					      bsp_priv->led_io_level);
+		} else {
+			/* LED off */
+			gpio_set_value(bsp_priv->led_io,
+					      !bsp_priv->led_io_level);
+		}
+	}
+}
+
+static void macphy_led_work(struct work_struct *work)
+{
+	struct bsp_priv *bsp_priv =
+		container_of(work, struct bsp_priv, led_work.work);
+	unsigned long flags;
+
+	spin_lock_irqsave(&bsp_priv->led_lock, flags);
+
+	if (bsp_priv->led_active &&
+	    time_after(jiffies, bsp_priv->led_next_time)) {
+		/* Set the earliest time we may set the LED */
+		bsp_priv->led_next_time = jiffies + NET_FLASH_PAUSE;
+		bsp_priv->led_active = 0;
+		spin_unlock_irqrestore(&bsp_priv->led_lock, flags);
+		gmac_set_network_leds(bsp_priv, 0);
+	} else {
+		spin_unlock_irqrestore(&bsp_priv->led_lock, flags);
+	}
+}
+
+static int rk322x_phy_adjust(struct phy_device *phydev) {
+	// disable auto MDIX
+	int resv1 = phy_read(phydev, 17);
+	printk("resv1 = %x\n", resv1);
+	phy_write(phydev, 17, resv1 & 0x3F);
+
+	// adjust TXAMP
+	phy_write(phydev,20,0x400);
+	phy_write(phydev,20,0x0);
+	phy_write(phydev,20,0x400);
+	phy_write(phydev,23,0xb);    // default is 0x8, set to 0xb
+	phy_write(phydev,20,0x4418);
+//	phy_write(phydev,20,0x8700);
+	return 0;
+}
+
+static void phy_resume_work(struct work_struct *work)
+{
+	struct bsp_priv *bsp_priv =
+		container_of(work, struct bsp_priv, resume_work.work);
+
+	if (bsp_priv->link == 1) {
+		if (gpio_is_valid(bsp_priv->link_io))
+			/* link LED on */
+			gpio_direction_output(bsp_priv->link_io, bsp_priv->link_io_level);
+	}
+}
+
 /**
  * stmmac_init_phy - PHY initialization
  * @dev: net device structure
@@ -922,9 +1021,11 @@ static int stmmac_init_phy(struct net_device *dev)
 	char phy_id_fmt[MII_BUS_ID_SIZE + 3];
 	char bus_id[MII_BUS_ID_SIZE];
 	int interface = priv->plat->interface;
+	struct bsp_priv *bsp_priv = priv->plat->bsp_priv;
 	priv->oldlink = 0;
 	priv->speed = 0;
 	priv->oldduplex = -1;
+
 	if (priv->plat->phy_bus_name)
 		snprintf(bus_id, MII_BUS_ID_SIZE, "%s-%x",
 			 priv->plat->phy_bus_name, priv->plat->bus_id);
@@ -967,6 +1068,25 @@ static int stmmac_init_phy(struct net_device *dev)
 
 	gmac_create_sysfs(phydev);
 
+	if ((bsp_priv->chip == RK322X_GMAC ||
+	     bsp_priv->chip == RK322XH_GMAC) &&
+	    (bsp_priv->internal_phy)) {
+		rk322x_phy_adjust(phydev);
+		if (gpio_is_valid(bsp_priv->led_io))
+			/* LED off */
+			gpio_direction_output(bsp_priv->led_io,
+					      !bsp_priv->led_io_level);
+	}
+
+	INIT_DELAYED_WORK(&bsp_priv->led_work, macphy_led_work);
+	INIT_DELAYED_WORK(&bsp_priv->resume_work, phy_resume_work);
+
+	/* Initialize next time the led can flash */
+	bsp_priv->led_next_time = jiffies;
+	bsp_priv->led_active = 0;
+	spin_lock_init(&bsp_priv->led_lock);
+
+        bsp_priv->link = 0;
 	return 0;
 }
 
@@ -1104,7 +1224,7 @@ static int stmmac_init_rx_buffers(struct stmmac_priv *priv, struct dma_desc *p,
  * and allocates the socket buffers. It suppors the chained and ring
  * modes.
  */
-static void init_dma_desc_rings(struct net_device *dev)
+static int init_dma_desc_rings(struct net_device *dev)
 {
 	int i;
 	struct stmmac_priv *priv = netdev_priv(dev);
@@ -1135,8 +1255,10 @@ static void init_dma_desc_rings(struct net_device *dev)
 							  dma_extended_desc),
 						   &priv->dma_tx_phy,
 						   GFP_KERNEL);
-		if ((!priv->dma_erx) || (!priv->dma_etx))
-			return;
+		if ((!priv->dma_erx) || (!priv->dma_etx)) {
+			dev_err(&dev->dev, "dma_alloc_coherent dma_etx or dmaerx fail \n");
+			return -ENOMEM;
+		}
 	} else {
 		priv->dma_rx = dma_alloc_coherent(priv->device, rxsize *
 						  sizeof(struct dma_desc),
@@ -1146,8 +1268,13 @@ static void init_dma_desc_rings(struct net_device *dev)
 						  sizeof(struct dma_desc),
 						  &priv->dma_tx_phy,
 						  GFP_KERNEL);
-		if ((!priv->dma_rx) || (!priv->dma_tx))
-			return;
+		if ((!priv->dma_rx) || (!priv->dma_tx)) {
+			dev_err(&dev->dev, "dma_alloc_coherent dma_tx or dma_rx fail \n");
+			return -ENOMEM;
+		}
+
+		memset(priv->dma_rx, 0, rxsize * sizeof(struct dma_desc));
+		memset(priv->dma_tx, 0, txsize * sizeof(struct dma_desc));
 	}
 
 	priv->rx_skbuff_dma = kmalloc_array(rxsize, sizeof(dma_addr_t),
@@ -1216,6 +1343,8 @@ static void init_dma_desc_rings(struct net_device *dev)
 
 	if (netif_msg_hw(priv))
 		stmmac_display_rings(priv);
+
+	return 0;
 }
 
 static void dma_free_rx_skbufs(struct stmmac_priv *priv)
@@ -1594,7 +1723,13 @@ static void stmmac_check_ether_addr(struct stmmac_priv *priv)
 					     priv->dev->base_addr,
 					     priv->dev->dev_addr, 0);
 		if (!is_valid_ether_addr(priv->dev->dev_addr))
+			eth_mac_devinfo(priv->dev->dev_addr);
+		if (!is_valid_ether_addr(priv->dev->dev_addr))
+			eth_mac_vendor_storage(priv->dev->dev_addr);
+		if (!is_valid_ether_addr(priv->dev->dev_addr))
 			eth_mac_idb(priv->dev->dev_addr);
+		if (!is_valid_ether_addr(priv->dev->dev_addr))
+			eth_mac_file(priv->dev->dev_addr);
 		if (!is_valid_ether_addr(priv->dev->dev_addr))
 			eth_hw_addr_random(priv->dev);
 	}
@@ -1676,20 +1811,15 @@ static int stmmac_open(struct net_device *dev)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
 	int ret;
-/*****terry 2015-12-2*****************/
-	int cpu = 2;//在CPU2
-	struct cpumask cpumask;
-/****************************/	
-	printk(KERN_EMERG "%s,line=%d terry 2015-9-18\n", __func__,__LINE__);
-	
+
 	if ((priv->plat) && (priv->plat->bsp_priv)) {
 		struct bsp_priv * bsp_priv = priv->plat->bsp_priv;
 		if (bsp_priv) { 
 			if (bsp_priv->phy_power_on) {
-				bsp_priv->phy_power_on(true);
+				bsp_priv->phy_power_on(bsp_priv, true);
 			}
 			if (bsp_priv->gmac_clk_enable) {
-				bsp_priv->gmac_clk_enable(true);
+				bsp_priv->gmac_clk_enable(bsp_priv, true);
 			}
 		}
 	}
@@ -1721,7 +1851,11 @@ static int stmmac_open(struct net_device *dev)
 	priv->dma_tx_size = STMMAC_ALIGN(dma_txsize);
 	priv->dma_rx_size = STMMAC_ALIGN(dma_rxsize);
 	priv->dma_buf_sz = STMMAC_ALIGN(buf_sz);
-	init_dma_desc_rings(dev);
+	ret = init_dma_desc_rings(dev);
+	if (ret < 0) {
+		pr_err("%s: init_dma_desc_rings failed\n", __func__);
+		goto open_error;
+	}
 
 	/* DMA initialization and SW reset */
 	ret = stmmac_init_dma_engine(priv);
@@ -1770,12 +1904,6 @@ static int stmmac_open(struct net_device *dev)
 			goto open_error_lpiirq;
 		}
 	}
-	
-	/*****terry 2015-12-2*****************/	
-	cpumask_clear(&cpumask);
-	cpumask_set_cpu(cpu, &cpumask); 
-	irq_set_affinity(dev->irq, &cpumask); 
-	/*****************************/
 
 	/* Enable the MAC Rx/Tx */
 	stmmac_set_mac(priv->ioaddr, true);
@@ -1845,7 +1973,7 @@ open_error:
 	if ((priv->plat) && (priv->plat->bsp_priv)) {
 		struct bsp_priv * bsp_priv = priv->plat->bsp_priv;
 		if ((bsp_priv) && (bsp_priv->gmac_clk_enable)) {
-			bsp_priv->gmac_clk_enable(false);
+			bsp_priv->gmac_clk_enable(bsp_priv, false);
 		}
 	}
 
@@ -1861,8 +1989,7 @@ open_error:
 static int stmmac_release(struct net_device *dev)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
-	printk(KERN_EMERG "%s,line=%d terry 2015-9-18\n", __func__,__LINE__);
-	
+
 	if (priv->eee_enabled)
 		del_timer_sync(&priv->eee_ctrl_timer);
 
@@ -1911,10 +2038,10 @@ static int stmmac_release(struct net_device *dev)
 		struct bsp_priv * bsp_priv = priv->plat->bsp_priv;
 		if (bsp_priv) { 
 			if (bsp_priv->phy_power_on) {
-				bsp_priv->phy_power_on(false);
+				bsp_priv->phy_power_on(bsp_priv, false);
 			}
 			if (bsp_priv->gmac_clk_enable) {
-				bsp_priv->gmac_clk_enable(false);
+				bsp_priv->gmac_clk_enable(bsp_priv, false);
 			}
 		}
 	}
@@ -1939,30 +2066,37 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 	int nfrags = skb_shinfo(skb)->nr_frags;
 	struct dma_desc *desc, *first;
 	unsigned int nopaged_len = skb_headlen(skb);
-	
-	if (unlikely(stmmac_tx_avail(priv) < nfrags + 1)) 
-	{
-		if (!netif_queue_stopped(dev)) 
-		{
+	struct bsp_priv *bsp_priv = priv->plat->bsp_priv;
+	unsigned long flags;
+
+	if ((bsp_priv->internal_phy) && (gpio_is_valid(bsp_priv->led_io))) {
+		spin_lock_irqsave(&bsp_priv->led_lock, flags);
+		if (!bsp_priv->led_active &&
+		    time_after(jiffies, bsp_priv->led_next_time)) {
+			/* Set the earliest time we may clear the LED */
+			bsp_priv->led_next_time = jiffies + NET_FLASH_TIME;
+			bsp_priv->led_active = 1;
+			spin_unlock_irqrestore(&bsp_priv->led_lock, flags);
+
+			gmac_set_network_leds(bsp_priv, 1);
+			schedule_delayed_work(&bsp_priv->led_work,
+					      NET_FLASH_TIME + 1);
+		} else {
+			spin_unlock_irqrestore(&bsp_priv->led_lock, flags);
+		}
+	}
+
+	if (unlikely(stmmac_tx_avail(priv) < nfrags + 1)) {
+		if (!netif_queue_stopped(dev)) {
 			netif_stop_queue(dev);
 			/* This is a hard error, log it. */
 			pr_err("%s: Tx Ring full when queue awake\n", __func__);
 		}
 		return NETDEV_TX_BUSY;
 	}
-	#if 0
-	while(g_Device->m_Timer.regs_timer0 != NULL)
-	{
-			if ((!readl_relaxed(g_Device->m_Timer.regs_timer0 + 0x18)) && (!atomic_read( &g_Device->m_Timer.m_Tx_Lock)))
-			{
-				break;
-			}
-	}
-	#endif
-	
+
 	spin_lock(&priv->tx_lock);
-	disable_irq(98);//不仅禁止给定的中断, 还等待当前执行的中断处理程序结束
-	
+
 	if (priv->tx_path_in_lpi_mode)
 		stmmac_disable_eee_mode(priv);
 
@@ -2097,113 +2231,10 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 		skb_tx_timestamp(skb);
 
 	priv->hw->dma->enable_dma_transmission(priv->ioaddr);
-	
-	enable_irq(98);
+
 	spin_unlock(&priv->tx_lock);
-	
+
 	return NETDEV_TX_OK;
-}
-
-unsigned short rtl8211_xmit(unsigned char *pbData, unsigned int length)
-{
-	struct sk_buff tskb, *skb;
-	struct stmmac_priv *priv = netdev_priv(ndev);
-	unsigned int txsize = priv->dma_tx_size;//256
-	unsigned int entry;
-	int csum_insertion = 0, is_jumbo = 0;
-	int nfrags = 0;
-	struct dma_desc *desc, *first;
-	unsigned int nopaged_len ;
-	
-#if 1	
-	atomic_set(&g_Device->m_Timer.m_Tx_Lock, 1);
-//spin_lock(&priv->tx_lock);
-	skb = &tskb;
-	skb->len = length;
-	skb->data = pbData;
-	skb->data_len=0;
-	skb->ip_summed = 0;
-	nopaged_len = skb->len;
-
-	entry = priv->cur_tx % txsize;
-	csum_insertion = (skb->ip_summed == CHECKSUM_PARTIAL);
-	
-	//printk(KERN_EMERG "entry=%d  priv->cur_tx=%d priv->extend_desc=%d skb->ip_summed=%d\n", entry,priv->cur_tx,priv->extend_desc,skb->ip_summed);
-	if (priv->extend_desc)
-		desc = (struct dma_desc *)(priv->dma_etx + entry);
-	else
-		desc = priv->dma_tx + entry;
-
-	first = desc;
-#if 0
-	priv->tx_skbuff[entry] = skb;
- #endif
-	/* To program the descriptors according to the size of the frame */
-	if (priv->mode == STMMAC_RING_MODE) {
-		is_jumbo = priv->hw->ring->is_jumbo_frm(skb->len,
-							priv->plat->enh_desc);
-		//printk(KERN_EMERG "priv->mode == STMMAC_RING_MODE is_jumbo=%d 1111111111111111\n", is_jumbo);//is_jumbo = 0
-		if (unlikely(is_jumbo))
-		{
-			entry = priv->hw->ring->jumbo_frm(priv, skb,
-							  csum_insertion);
-		}
-	} else {
-		is_jumbo = priv->hw->chain->is_jumbo_frm(skb->len,
-							 priv->plat->enh_desc);
-		if (unlikely(is_jumbo))
-			entry = priv->hw->chain->jumbo_frm(priv, skb,
-							   csum_insertion);
-	}
-
-	if (likely(!is_jumbo)) {
-		desc->des2 = dma_map_single(priv->device, skb->data,
-					    nopaged_len, DMA_TO_DEVICE);
-		priv->tx_skbuff_dma[entry] = desc->des2;
-		priv->hw->desc->prepare_tx_desc(desc, 1, nopaged_len,
-						csum_insertion, priv->mode);
-	} else
-		desc = first;
-
-	/* Finalize the latest segment. 完成最新的部分*/
-	priv->hw->desc->close_tx_desc(desc);
-	
-	//printk(KERN_EMERG "nfrags=%d nopaged_len=%d skb->data_len=%d 222222222222222222\n", nfrags,nopaged_len,skb->data_len);//nfrags=0 nopaged_len=98(ping) skb->data_len=0
-
-	wmb();
-	// printk(KERN_EMERG "priv->tx_coal_frames=%d priv->tx_count_frames=%d 3333333333333333333\n", priv->tx_coal_frames, priv->tx_count_frames);
-	/* According to the coalesce parameter the IC bit for the latest
-	 * segment could be reset and the timer re-started to invoke the
-	 * stmmac_tx function. This approach takes care about the fragments.
-	 */
-	priv->tx_count_frames += nfrags + 1;
-	if (priv->tx_coal_frames > priv->tx_count_frames) {
-		//printk(KERN_EMERG "entry priv->hw->desc->clear_tx_ic\n");
-		priv->hw->desc->clear_tx_ic(desc);
-		priv->xstats.tx_reset_ic_bit++;
-		TX_DBG("\t[entry %d]: tx_count_frames %d\n", entry,
-		       priv->tx_count_frames);
-		       //printk(KERN_EMERG "priv->tx_coal_frames=%d priv->tx_count_frames=%d 444444444444444444444\n", priv->tx_coal_frames, priv->tx_count_frames);
-		mod_timer(&priv->txtimer,
-			  STMMAC_COAL_TIMER(priv->tx_coal_timer));
-	} else
-		priv->tx_count_frames = 0;
-
-	/* To avoid raise condition */
-	priv->hw->desc->set_tx_owner(first);
-	wmb();
-	
-	priv->cur_tx++;
-	ndev->stats.tx_bytes += skb->len;
-	//printk(KERN_EMERG "dev->stats.tx_bytes=%ld \n",dev->stats.tx_bytes);
-	
-	priv->hw->dma->enable_dma_transmission(priv->ioaddr);
-	
-	atomic_set(&g_Device->m_Timer.m_Tx_Lock, 0);
-//spin_unlock(&priv->tx_lock);		
-#endif
-
-	return  length;
 }
 
 /**
@@ -2265,7 +2296,25 @@ static int stmmac_rx(struct stmmac_priv *priv, int limit)
 	unsigned int next_entry;
 	unsigned int count = 0;
 	int coe = priv->plat->rx_coe;
-	struct ethhdr *eth;//terry
+	struct bsp_priv *bsp_priv = priv->plat->bsp_priv;
+	unsigned long flags;
+
+	if ((bsp_priv->internal_phy) && (gpio_is_valid(bsp_priv->led_io))) {
+		spin_lock_irqsave(&bsp_priv->led_lock, flags);
+		if (!bsp_priv->led_active &&
+		    time_after(jiffies, bsp_priv->led_next_time)) {
+			/* Set the earliest time we may clear the LED */
+			bsp_priv->led_next_time = jiffies + NET_FLASH_TIME;
+			bsp_priv->led_active = 1;
+			spin_unlock_irqrestore(&bsp_priv->led_lock, flags);
+
+			gmac_set_network_leds(bsp_priv, 1);
+			schedule_delayed_work(&bsp_priv->led_work,
+					      NET_FLASH_TIME+1);
+		} else {
+			spin_unlock_irqrestore(&bsp_priv->led_lock, flags);
+		}
+	}
 #ifdef STMMAC_RX_DEBUG
 	if (netif_msg_hw(priv)) {
 		pr_debug(">>> stmmac_rx: descriptor ring:\n");
@@ -2360,20 +2409,7 @@ static int stmmac_rx(struct stmmac_priv *priv, int limit)
 			}
 #endif
 			skb->protocol = eth_type_trans(skb, priv->dev);
-/********************terry 2015-12-8******************************************************/
-#ifdef PUNGO_DRIVER	  
-			//unsigned int i;
-			eth = eth_hdr(skb);
-			if (likely(skb->protocol  == 0xa488) && *(unsigned char *)(eth->h_source) == 0x03 )//APRD指令
-			//if (likely(skb->protocol  == 0xa488))//APRD指令
-			{
-				Adapter_Get(&g_Device->m_Adapter,skb->data, frame_len-14);
-				//printk(KERN_EMERG "frame_len=%d  receive package count=%d\n", frame_len,i++);
-				//for(i = 0; i < frame_len-14; i++ )
-					//printk(KERN_EMERG "skb->data[%d] = 0x%x \n", i +14,skb->data[i]);			
-			}
-#endif
-/***********************************************************************/
+
 			if (unlikely(!coe))
 				skb_checksum_none_assert(skb);
 			else
@@ -2920,7 +2956,7 @@ struct stmmac_priv *stmmac_dvr_probe(struct device *device,
 				     void __iomem *addr)
 {
 	int ret = 0;
-	//struct net_device *ndev = NULL; //terry 2015-10-16
+	struct net_device *ndev = NULL;
 	struct stmmac_priv *priv;
 
 	ndev = alloc_etherdev(sizeof(struct stmmac_priv));
@@ -2943,6 +2979,7 @@ struct stmmac_priv *stmmac_dvr_probe(struct device *device,
 
 	/* Verify driver arguments */
 	stmmac_verify_args();
+
 	priv->plat->phy_addr = -1;
 
 	/* Override with kernel parameters if supplied XXX CRS XXX
@@ -2962,7 +2999,6 @@ struct stmmac_priv *stmmac_dvr_probe(struct device *device,
 			    NETIF_F_RXCSUM;
 	ndev->features |= ndev->hw_features | NETIF_F_HIGHDMA;
 	ndev->watchdog_timeo = msecs_to_jiffies(watchdog);
-	memcpy(ndev->name, "eth-gfd", IFNAMSIZ);//terry 2016-4-27
 #ifdef STMMAC_VLAN_TAG_USED
 	/* Both mac100 and gmac support receive VLAN tag detection */
 	ndev->features |= NETIF_F_HW_VLAN_CTAG_RX;
@@ -2986,7 +3022,7 @@ struct stmmac_priv *stmmac_dvr_probe(struct device *device,
 
 	spin_lock_init(&priv->lock);
 	spin_lock_init(&priv->tx_lock);
-	
+
 	ret = register_netdev(ndev);
 	if (ret) {
 		pr_err("%s: ERROR %i registering the device\n", __func__, ret);
@@ -3036,9 +3072,7 @@ error_netdev_register:
 	netif_napi_del(&priv->napi);
 error_free_netdev:
 	free_netdev(ndev);
-	
-	ndev = NULL;//terry 2015-9-23
-	
+
 	return NULL;
 }
 
@@ -3048,9 +3082,9 @@ error_free_netdev:
  * Description: this function resets the TX/RX processes, disables the MAC RX/TX
  * changes the link status, releases the DMA descriptor rings.
  */
-int stmmac_dvr_remove(struct net_device *sndev)
+int stmmac_dvr_remove(struct net_device *ndev)
 {
-	struct stmmac_priv *priv = netdev_priv(sndev);
+	struct stmmac_priv *priv = netdev_priv(ndev);
 
 	pr_info("%s:\n\tremoving driver", __func__);
 
@@ -3060,12 +3094,11 @@ int stmmac_dvr_remove(struct net_device *sndev)
 	stmmac_set_mac(priv->ioaddr, false);
 	if (priv->pcs != STMMAC_PCS_SGMII && priv->pcs != STMMAC_PCS_TBI &&
 	    priv->pcs != STMMAC_PCS_RTBI)
-		stmmac_mdio_unregister(sndev);
-	netif_carrier_off(sndev);
-	unregister_netdev(sndev);
-	free_netdev(sndev);
-	ndev = NULL;//terry 09-25
-	
+		stmmac_mdio_unregister(ndev);
+	netif_carrier_off(ndev);
+	unregister_netdev(ndev);
+	free_netdev(ndev);
+
 	return 0;
 }
 
@@ -3074,6 +3107,9 @@ int stmmac_suspend(struct net_device *ndev)
 {
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	unsigned long flags;
+	bool pwr_off_phy = false;
+	struct bsp_priv * bsp_priv = NULL;
+
 	if (!ndev || !netif_running(ndev))
 		return 0;
 
@@ -3100,18 +3136,21 @@ int stmmac_suspend(struct net_device *ndev)
 		stmmac_set_mac(priv->ioaddr, false);
 		/* Disable clock in case of PWM is off */
 		if ((priv->plat) && (priv->plat->bsp_priv)) {
-			struct bsp_priv * bsp_priv = priv->plat->bsp_priv;
-			if (bsp_priv) {
-				if (bsp_priv->gmac_clk_enable) {
-					bsp_priv->gmac_clk_enable(false);
-				}
-				if (bsp_priv->phy_power_on) {
-					bsp_priv->phy_power_on(false);
-				}
+			bsp_priv = priv->plat->bsp_priv;
+			pwr_off_phy = true;
+			if (bsp_priv && bsp_priv->gmac_clk_enable) {
+				bsp_priv->gmac_clk_enable(bsp_priv, false);
 			}
 		}
 	}
 	spin_unlock_irqrestore(&priv->lock, flags);
+
+	if (pwr_off_phy && bsp_priv) {
+		if (bsp_priv->phy_power_on) {
+			bsp_priv->phy_power_on(bsp_priv, false);
+		}
+	}
+
 	return 0;
 }
 
@@ -3119,11 +3158,11 @@ int stmmac_resume(struct net_device *ndev)
 {
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	unsigned long flags;
+	bool pwr_on_phy = false;
+	struct bsp_priv * bsp_priv = NULL;
 
 	if (!netif_running(ndev))
 		return 0;
-
-	spin_lock_irqsave(&priv->lock, flags);
 
 	/* Power Down bit, into the PM register, is cleared
 	 * automatically as soon as a magic packet or a Wake-up frame
@@ -3131,24 +3170,25 @@ int stmmac_resume(struct net_device *ndev)
 	 * this bit because it can generate problems while resuming
 	 * from another devices (e.g. serial console).
 	 */
-	if (device_may_wakeup(priv->device))
+	if (device_may_wakeup(priv->device)) {
+		spin_lock_irqsave(&priv->lock, flags);
 		priv->hw->mac->pmt(priv->ioaddr, 0);
-	else {
+		spin_unlock_irqrestore(&priv->lock, flags);
+	} else {
 		/* enable the clk prevously disabled */
-		if ((priv->plat) && (priv->plat->bsp_priv)) {
-			struct bsp_priv * bsp_priv = priv->plat->bsp_priv;
-			if (bsp_priv) {
-				if (bsp_priv->gmac_clk_enable) {
-					bsp_priv->gmac_clk_enable(true);
-				}
-				if (bsp_priv->phy_power_on) {
-					bsp_priv->phy_power_on(true);
-				}
+		if (priv->plat && (priv->plat->bsp_priv)) {
+			bsp_priv = priv->plat->bsp_priv;
+			if (bsp_priv && bsp_priv->gmac_clk_enable) {
+				bsp_priv->gmac_clk_enable(bsp_priv, true);
 			}
+
+			pwr_on_phy = true;
 		}
 	}
 
 	netif_device_attach(ndev);
+
+	spin_lock_irqsave(&priv->lock, flags);
 
 	/* Enable the MAC and DMA */
 	stmmac_set_mac(priv->ioaddr, true);
@@ -3161,8 +3201,25 @@ int stmmac_resume(struct net_device *ndev)
 
 	spin_unlock_irqrestore(&priv->lock, flags);
 
+	if (pwr_on_phy && bsp_priv) {
+		if (bsp_priv->phy_power_on) {
+			bsp_priv->phy_power_on(bsp_priv, true);
+		}
+	}
+
 	if (priv->phydev)
 		phy_start(priv->phydev);
+
+	if ((bsp_priv->chip == RK322X_GMAC ||
+	     bsp_priv->chip == RK322XH_GMAC) &&
+	    (bsp_priv->internal_phy)) {
+		rk322x_phy_adjust(priv->phydev);
+	}
+
+	if ((bsp_priv->chip == RK322X_GMAC ||
+	     bsp_priv->chip == RK322XH_GMAC) &&
+	    (bsp_priv->internal_phy))
+		schedule_delayed_work(&bsp_priv->resume_work, 2 * HZ); /* delay 2s */
 
 	return 0;
 }
@@ -3184,108 +3241,6 @@ int stmmac_restore(struct net_device *ndev)
 }
 #endif /* CONFIG_PM */
 
-
-#if 0
-static int Device_t_open(struct inode *inode, struct file *filp)
-{
-	printk(KERN_CRIT "%s()\n",__FUNCTION__);
-	
-	return 0;
-}
-
-static int Device_t_release(struct inode *inode, struct file *filp)
-{
-	printk(KERN_CRIT "%s()\n",__FUNCTION__);
-	enable_irq(98);
-	return 0;
-}
-
-static ssize_t Device_t_write(struct file *file,const char __user *buf, size_t count, loff_t *offset)
-{
-	//printk(KERN_CRIT "%s()\n",__FUNCTION__);
-#if 1	
-	unsigned char  Packet[ETHERCAT_MAX_PACKET_LENGTH];
-	memset(Packet, 0, ETHERCAT_MAX_PACKET_LENGTH);//初使化包清除
-	
-	if(copy_from_user(&Packet, buf, count))//如果成功返回0；如果失败，会在已拷贝的数据后面用0填充，直到指定的数量n
-	{
-			printk(KERN_CRIT "copy_from_user error = %d\n",EFAULT);
-			return -EFAULT;//14	/* Bad address */
-	}
-	
-#endif
-
-	while(g_Device->m_Timer.regs_timer0 != NULL)
-	{
-			if (!readl_relaxed(g_Device->m_Timer.regs_timer0 + 0x18))
-			{
-				break;
-			}
-	}
-	disable_irq(98);
-	//Adapter_Send(APRDSendBuf, sizeof(APRDSendBuf));
-	Adapter_Send(Packet, count);
-	enable_irq(98);
-	return count;
-}
-
-
-static ssize_t Device_t_read(struct file *filp,char *buf,size_t count,loff_t *offp ) 
-{
-	printk(KERN_CRIT "%s()\n",__FUNCTION__);
-	//if(copy_to_user(buf,&ups_flag, count))//如果成功返回0；如果失败，会在已拷贝的数据后面用0填充，直到指定的数量n
-	//{
-			//printk(KERN_CRIT "copy_to_user error = %d\n",EFAULT);
-			//return -EFAULT;//14	/* Bad address */
-	//}
-	return count;
-}
-
-static const struct file_operations Device_t_fops = {
-	.owner = THIS_MODULE,
-	.open 	= Device_t_open,
-	.release	= Device_t_release,
-	//.unlocked_ioctl	= Device_t_ioctl,
-	//.mmap = Device_t_mmap,
-	.write = Device_t_write,
-	.read = Device_t_read,	
-};
-
-static struct miscdevice  Device_t_miscdev = {
-	.minor = MISC_DYNAMIC_MINOR,//255
-	.name = "SDO_DEV",
-	.fops = &Device_t_fops,
-};
-#endif
-
-#ifdef PUNGO_DRIVER
-int stmmac_init(void)
-{
-	int ret;
-
-	ret = stmmac_register_platform();
-	if (ret)
-		goto err;
-	ret = stmmac_register_pci();
-	if (ret)
-		goto err_pci;
-		
-	//misc_register(&Device_t_miscdev);//terry 2015-9-22
-	return 0;
-err_pci:
-	stmmac_unregister_platform();
-err:
-	pr_err("stmmac: driver registration failed\n");
-	return ret;
-}
-
-void stmmac_exit(void)
-{
-	stmmac_unregister_platform();
-	stmmac_unregister_pci();
-	//misc_deregister(&Device_t_miscdev);//terry 2015-9-22
-}
-#else
 /* Driver can be configured w/ and w/ both PCI and Platf drivers
  * depending on the configuration selected.
  */
@@ -3315,7 +3270,6 @@ static void __exit stmmac_exit(void)
 
 module_init(stmmac_init);
 module_exit(stmmac_exit);
-#endif
 
 #ifndef MODULE
 static int __init stmmac_cmdline_opt(char *str)
@@ -3370,8 +3324,6 @@ err:
 __setup("stmmaceth=", stmmac_cmdline_opt);
 #endif /* MODULE */
 
-#ifndef PUNGO_DRIVER
 MODULE_DESCRIPTION("STMMAC 10/100/1000 Ethernet device driver");
 MODULE_AUTHOR("Giuseppe Cavallaro <peppe.cavallaro@st.com>");
 MODULE_LICENSE("GPL");
-#endif

@@ -4950,6 +4950,10 @@
 
       100 816000
       >;
+     lkg-adjust-temp = <
+
+      40 20
+      >;
      status = "okay";
     };
    };
@@ -5416,7 +5420,7 @@
                 };
 
   disp_timings: display-timings {
-   native-mode = <&timing1>;
+   native-mode = <&timing4>;
    timing0: timing0 {
     screen-type = <1>;
     out-face = <0>;

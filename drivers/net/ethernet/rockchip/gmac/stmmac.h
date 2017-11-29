@@ -32,6 +32,7 @@
 #include <linux/pci.h>
 #include "common.h"
 #include <linux/ptp_clock_kernel.h>
+#include <linux/reset.h>
 
 struct stmmac_priv {
 	/* Frequently used values are kept adjacent for cache effect */
@@ -111,21 +112,41 @@ struct stmmac_priv {
 };
 
 enum {
-    RK3288_GMAC,
-    RK312X_GMAC
+	RK3288_GMAC,
+	RK312X_GMAC,
+	RK3368_GMAC,
+	RK322X_GMAC,
+	RK322XH_GMAC,
+	RV1108_GMAC,
+	RK_MAX_GMAC
 };
 
 struct bsp_priv {
+	struct regmap *grf;
+	struct reset_control *macphy_reset;
+	struct platform_device *pdev;
 	bool power_ctrl_by_pmu;
 	char pmu_regulator[32];
-	int pmu_enable_level;
 	int power_io;
 	int power_io_level;
 	int reset_io;
 	int reset_io_level;
+	int phyirq_io;
+	int phyirq_io_level;
+	int link_io;
+	int link_io_level;
+	int led_io;
+	int led_io_level;
+	spinlock_t led_lock; /* Protect LED state */
+	struct delayed_work led_work;
+	int led_active;
+	unsigned long led_next_time;
+	struct delayed_work resume_work;
+	int link;
 	int phy_iface;
 	bool clock_input;
-	int chip;
+	bool internal_phy;
+	unsigned long chip;
 	int tx_delay;
 	int rx_delay;
 
@@ -138,10 +159,13 @@ struct bsp_priv {
 	struct clk *clk_mac_refout;
 	struct clk *aclk_mac;
 	struct clk *pclk_mac;
+	struct clk *mac_clkin;
+	struct clk *phy_50m_out;
+	struct clk *clk_macphy;
 	bool clk_enable;
 
-	int (*phy_power_on)(bool enable);
-	int (*gmac_clk_enable)(bool enable);
+	int (*phy_power_on)(struct bsp_priv *bsp_priv, bool enable);
+	int (*gmac_clk_enable)(struct bsp_priv *bsp_priv, bool enable);
 };
 
 extern int phyaddr;

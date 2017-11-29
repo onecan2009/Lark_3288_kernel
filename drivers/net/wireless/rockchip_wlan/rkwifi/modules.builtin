@@ -1,0 +1,2 @@
+kernel/drivers/net/wireless/rockchip_wlan/rkwifi/rk_wifi_config.ko
+kernel/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmdhd.ko

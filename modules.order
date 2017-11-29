@@ -1,0 +1,4 @@
+kernel/drivers/gpu/arm/midgard/mali_kbase.ko
+kernel/drivers/net/ethernet/rockchip/eth_mac.ko
+kernel/drivers/net/ethernet/rockchip/gmac/stmmac.ko
+kernel/drivers/media/usb/gspca/gspca_main.ko

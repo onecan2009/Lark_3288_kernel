@@ -1,0 +1,2 @@
+kernel/drivers/input/touchscreen/rk29_i2c_goodix.ko
+kernel/drivers/input/touchscreen/vtl_ts/vtl_ts_ct36x.ko

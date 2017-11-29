@@ -1,0 +1,2 @@
+kernel/drivers/net/ethernet/rockchip/eth_mac.ko
+kernel/drivers/net/ethernet/rockchip/gmac/stmmac.ko

@@ -522,12 +522,21 @@ struct rk_fb_reg_data {
 	//int     fence_wait_begin;
 };
 
+struct rk_lcdc_bcsh {
+	bool enable;
+	u16 brightness;
+	u16 contrast;
+	u16 sat_con;
+	u16 sin_hue;
+	u16 cos_hue;
+};
 
 struct rk_lcdc_driver {
 	char name[6];
 	int id;
 	int prop;
 	struct device *dev;
+	u32 version;
 
 	struct rk_lcdc_win *win[RK_MAX_FB_SUPPORT];
 	int lcdc_win_num;
@@ -577,6 +586,7 @@ struct rk_lcdc_driver {
 	void (*irq_call_back)(struct rk_lcdc_driver *driver);
 #endif
 	struct overscan overscan;
+	struct rk_lcdc_bcsh bcsh;
 	int enable;
 	struct device *mmu_dev;
 };

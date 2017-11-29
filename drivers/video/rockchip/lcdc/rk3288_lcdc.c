@@ -280,6 +280,9 @@ static void lcdc_read_reg_defalut_cfg(struct lcdc_device *lcdc_dev)
 	for (reg = 0; reg < 0x1a0; reg+= 4) {
 		val = lcdc_readl(lcdc_dev, reg);
 		switch (reg) {
+			case VERSION_INFO:
+				lcdc_dev->driver.version = val;
+				break;
 			case WIN0_ACT_INFO:
 				win0->area[0].xact = (val & m_WIN0_ACT_WIDTH)+1;
 				win0->area[0].yact = ((val & m_WIN0_ACT_HEIGHT)>>16)+1;
@@ -1076,10 +1079,33 @@ static int rk3288_lcdc_set_dclk(struct rk_lcdc_driver *dev_drv)
 #endif
 }
 
+
+static void rk3288_lcdc_bcsh_path_sel(struct rk_lcdc_driver *dev_drv)
+{
+	struct lcdc_device *lcdc_dev =
+	    container_of(dev_drv, struct lcdc_device, driver);
+	u32 bcsh_color_bar;
+
+	bcsh_color_bar = lcdc_readl(lcdc_dev, BCSH_COLOR_BAR);
+	if (((bcsh_color_bar & m_BCSH_EN) == 1) ||
+	    (dev_drv->bcsh.enable == 1))/*bcsh enabled */
+		lcdc_msk_reg(lcdc_dev, BCSH_CTRL,
+			     m_BCSH_R2Y_EN | m_BCSH_Y2R_EN,
+			     v_BCSH_R2Y_EN(1) | v_BCSH_Y2R_EN(1));
+	else
+		lcdc_msk_reg(lcdc_dev, BCSH_CTRL,
+			     m_BCSH_R2Y_EN | m_BCSH_Y2R_EN,
+			     v_BCSH_R2Y_EN(0) | v_BCSH_Y2R_EN(0));
+}
+
+
+
 static int rk3288_load_screen(struct rk_lcdc_driver *dev_drv, bool initscreen)
 {
 	u16 face = 0;
 	u32 v=0;
+	int ret = 0;
+
 	struct lcdc_device *lcdc_dev =
 	    container_of(dev_drv, struct lcdc_device, driver);
 	struct rk_screen *screen = dev_drv->cur_screen;
@@ -1226,6 +1252,10 @@ static int rk3288_load_screen(struct rk_lcdc_driver *dev_drv, bool initscreen)
 		lcdc_msk_reg(lcdc_dev, DSP_VACT_ST_END, mask, val);
 
 		rk3288_lcdc_post_cfg(dev_drv);
+		//dev_drv->output_color = screen->color_mode;
+		if (dev_drv->version == VOP_FULL_RK3288_V1_1) {
+			rk3288_lcdc_bcsh_path_sel(dev_drv);
+		} 
 	}
 	spin_unlock(&lcdc_dev->reg_lock);
 	rk3288_lcdc_set_dclk(dev_drv);
@@ -1234,7 +1264,8 @@ static int rk3288_load_screen(struct rk_lcdc_driver *dev_drv, bool initscreen)
 	if (screen->init)
 		screen->init();
 	
-	return 0;
+	// return 0;
+	return ret;
 }
 
 /*enable layer,open:1,enable;0 disable*/
@@ -3604,12 +3635,16 @@ static int rk3288_lcdc_open_bcsh(struct rk_lcdc_driver *dev_drv, bool open)
 			lcdc_writel(lcdc_dev,BCSH_COLOR_BAR,0x1);
 			lcdc_writel(lcdc_dev,BCSH_BCS,0xd0010000);
 			lcdc_writel(lcdc_dev,BCSH_H,0x01000000);
+			dev_drv->bcsh.enable = 1;
 		} else {
 			mask = m_BCSH_EN;
 			val = v_BCSH_EN(0);
 			lcdc_msk_reg(lcdc_dev, BCSH_COLOR_BAR, mask, val);
+			dev_drv->bcsh.enable = 0;
 		}
 		lcdc_cfg_done(lcdc_dev);
+		if (dev_drv->version == VOP_FULL_RK3288_V1_1)
+			rk3288_lcdc_bcsh_path_sel(dev_drv);
 	}
 	spin_unlock(&lcdc_dev->reg_lock);
 	return 0;

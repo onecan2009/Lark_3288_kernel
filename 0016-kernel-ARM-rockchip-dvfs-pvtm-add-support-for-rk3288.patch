@@ -1,0 +1,172 @@
+From de3128ba6b13b5b1b31236ddfa18df44926cc905 Mon Sep 17 00:00:00 2001
+From: cjp <service@t-firefly.com>
+Date: Fri, 24 Nov 2017 18:01:15 +0800
+Subject: [PATCH 16/16] [kernel] ARM: rockchip: dvfs: pvtm: add support for
+ rk3288w
+
+---
+ kernel/arch/arm/boot/dts/rk3288.dtsi  |    4 ++
+ kernel/arch/arm/mach-rockchip/dvfs.c  |   67 ++++++++++++++++++++++++++++++---
+ kernel/arch/arm/mach-rockchip/efuse.h |    1 +
+ 3 files changed, 67 insertions(+), 5 deletions(-)
+ mode change 100755 => 100644 kernel/arch/arm/boot/dts/rk3288.dtsi
+ mode change 100755 => 100644 kernel/arch/arm/mach-rockchip/dvfs.c
+
+diff --git a/kernel/arch/arm/boot/dts/rk3288.dtsi b/kernel/arch/arm/boot/dts/rk3288.dtsi
+old mode 100755
+new mode 100644
+index d7fc0e4..da2ec00
+--- a/kernel/arch/arm/boot/dts/rk3288.dtsi
++++ b/kernel/arch/arm/boot/dts/rk3288.dtsi
+@@ -963,6 +963,10 @@
+ 						/*temp    freq*/
+ 						100     816000
+ 						>;
++					lkg-adjust-temp = <
++						/*lkg   delta-temp*/
++						40      20
++						>;
+ 					status = "okay";
+ 				};
+ 			};
+diff --git a/kernel/arch/arm/mach-rockchip/dvfs.c b/kernel/arch/arm/mach-rockchip/dvfs.c
+old mode 100755
+new mode 100644
+index 4a408fe..4ed06f0
+--- a/kernel/arch/arm/mach-rockchip/dvfs.c
++++ b/kernel/arch/arm/mach-rockchip/dvfs.c
+@@ -43,6 +43,25 @@ static int pd_gpu_off, early_suspend;
+ static DEFINE_MUTEX(switch_vdd_gpu_mutex);
+ struct regulator *vdd_gpu_regulator;
+ 
++static int lkg_adjust_temp;
++
++static int virt_temp_for_tempctrl(int temp)
++{
++       return temp + lkg_adjust_temp;
++}
++
++static int dvfs_get_temp(int chn)
++{
++       int temp;
++
++       temp = rockchip_tsadc_get_temp(chn);
++
++       if (ROCKCHIP_PM_POLICY_PERFORMANCE == rockchip_pm_get_policy())
++               temp = virt_temp_for_tempctrl(temp);
++
++       return temp;
++}
++
+ static int vdd_gpu_reboot_notifier_event(struct notifier_block *this,
+ 	unsigned long event, void *ptr)
+ {
+@@ -915,9 +934,37 @@ static struct pvtm_info rk3288v1_arm_pvtm_info = {
+ 	.max_volt_uv = 1400000,
+ };
+ 
++static struct cpufreq_frequency_table rk3288v2_arm_pvtm_table[] = {
++	{.frequency = 216000,  .index = 5369},
++	{.frequency = 408000,  .index = 6984},
++	{.frequency = 600000,  .index = 8771},
++	{.frequency = 816000,  .index = 11434},
++	{.frequency = 1008000,  .index = 14178},
++	{.frequency = 1200000,  .index = 16797},
++	{.frequency = 1416000,  .index = 20178},
++	{.frequency = 1608000,  .index = 23303},
++	{.frequency = CPUFREQ_TABLE_END, .index = 1},
++};
++
++static struct pvtm_info rk3288v2_arm_pvtm_info = {
++	.compatible = "rockchip,rk3288",
++	.pvtm_table = rk3288v2_arm_pvtm_table,
++	.channel = ARM_DVFS_CH,
++	.process_version = RK3288_PROCESS_V2,
++	.scan_rate_hz = 216000000,
++	.sample_time_us = 1000,
++	.volt_step_uv = 12500,
++	.delta_pvtm_by_volt = 430,
++	.delta_pvtm_by_temp = 12,
++	.volt_margin_uv = 25000,
++	.min_volt_uv = 900000,
++	.max_volt_uv = 1400000,
++};
++
+ static struct pvtm_info *pvtm_info_table[] = {
+ 	&rk3288v0_arm_pvtm_info,
+ 	&rk3288v1_arm_pvtm_info,
++	&rk3288v2_arm_pvtm_info,
+ };
+ 
+ static int pvtm_set_single_dvfs(struct dvfs_node *dvfs_node, u32 idx,
+@@ -937,7 +984,7 @@ static int pvtm_set_single_dvfs(struct dvfs_node *dvfs_node, u32 idx,
+ 		n++;
+ 
+ 	pvtm_margin = n*info->delta_pvtm_by_volt;
+-	temp = rockchip_tsadc_get_temp(1);
++	temp = dvfs_get_temp(1);
+ 	target_pvtm = min_pvtm+temp * info->delta_pvtm_by_temp + pvtm_margin;
+ 
+ 	DVFS_DBG("=====%s: temp:%d, freq:%d, target pvtm:%d=====\n",
+@@ -1086,7 +1133,7 @@ static void dvfs_temp_limit_work_func(struct work_struct *work)
+ 
+ 	queue_delayed_work_on(0, dvfs_wq, to_delayed_work(work), delay);
+ 
+-	temp = rockchip_tsadc_get_temp(1);
++	temp = dvfs_get_temp(1);
+ 
+ 	if (temp == INVALID_TEMP)
+ 		return dvfs_virt_temp_limit_work_func();
+@@ -1873,7 +1920,10 @@ static int dvfs_node_parse_dt(struct device_node *np,
+ {
+ 	int process_version = rockchip_process_version();
+ 	int i = 0;
+-	int ret;
++	int ret = 0;
++	
++	if (soc_is_rk3288w())
++		process_version = RK3288_PROCESS_V2;
+ 
+ 	of_property_read_u32_index(np, "channel", 0, &dvfs_node->channel);
+ 
+@@ -1890,7 +1940,16 @@ static int dvfs_node_parse_dt(struct device_node *np,
+ 	of_property_read_u32_index(np, "temp-limit-enable", 0,
+ 				   &temp_limit_enable);
+ 	if (temp_limit_enable) {
++		int tmp[2];
++		int leakage = rockchip_get_leakage(dvfs_node->channel);
++
+ 		of_property_read_u32_index(np, "target-temp", 0, &target_temp);
++		ret = of_property_read_u32_array(np, "lkg-adjust-temp",
++						tmp, ARRAY_SIZE(tmp));
++		if (!ret)
++			if (leakage >= tmp[0])
++				lkg_adjust_temp = tmp[1];
++
+ 		pr_info("target-temp:%d\n", target_temp);
+ 		dvfs_node->nor_temp_limit_table =
+ 			of_get_temp_limit_table(np,
+@@ -1923,8 +1982,6 @@ static int dvfs_node_parse_dt(struct device_node *np,
+ 		for (i = 0; i < ARRAY_SIZE(pvtm_info_table); i++) {
+ 			struct pvtm_info *pvtm_info = pvtm_info_table[i];
+ 			
+-			if (soc_is_rk3288w())
+-				return;
+ 			if ((pvtm_info->channel == dvfs_node->channel) &&
+ 			    (pvtm_info->process_version == process_version) &&
+ 			     of_machine_is_compatible(pvtm_info->compatible)) {
+diff --git a/kernel/arch/arm/mach-rockchip/efuse.h b/kernel/arch/arm/mach-rockchip/efuse.h
+index 4f2b16c..6aa4867 100644
+--- a/kernel/arch/arm/mach-rockchip/efuse.h
++++ b/kernel/arch/arm/mach-rockchip/efuse.h
+@@ -22,6 +22,7 @@
+ 
+ #define RK3288_PROCESS_V0	0
+ #define RK3288_PROCESS_V1	1
++#define RK3288_PROCESS_V2	2
+ 
+ int rockchip_efuse_version(void);
+ int rockchip_process_version(void);
+-- 
+1.7.9.5
+

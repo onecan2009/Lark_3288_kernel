@@ -1,0 +1,1 @@
+cmd_drivers/media/usb/gspca/gspca_main.o := /home/rk3288-sdk/prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-ld -EL    -r -o drivers/media/usb/gspca/gspca_main.o drivers/media/usb/gspca/gspca.o drivers/media/usb/gspca/autogain_functions.o ; scripts/mod/modpost drivers/media/usb/gspca/gspca_main.o

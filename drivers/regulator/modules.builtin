@@ -1,0 +1,5 @@
+kernel/drivers/regulator/fixed.ko
+kernel/drivers/regulator/rockchip-pwm-regulator.ko
+kernel/drivers/regulator/act8846.ko
+kernel/drivers/regulator/syr82x.ko
+kernel/drivers/regulator/ricoh619-regulator.ko

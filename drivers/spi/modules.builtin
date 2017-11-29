@@ -1,0 +1,2 @@
+kernel/drivers/spi/spi-rockchip-core.ko
+kernel/drivers/spi/spi-rockchip.ko
