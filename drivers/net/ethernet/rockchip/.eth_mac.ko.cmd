@@ -1,1 +1,0 @@
-cmd_drivers/net/ethernet/rockchip/eth_mac.ko := /home/rk3288-sdk/prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-ld -EL -r  -T /home/rk3288-sdk/gpu-rk3288-kernel/scripts/module-common.lds --build-id  -o drivers/net/ethernet/rockchip/eth_mac.ko drivers/net/ethernet/rockchip/eth_mac.o drivers/net/ethernet/rockchip/eth_mac.mod.o

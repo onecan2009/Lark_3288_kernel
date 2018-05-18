@@ -1,0 +1,156 @@
+./drivers/gpu/drm/pl111/Kconfig:19:	select VT_HW_CONSOLE_BINDING if FRAMEBUFFER_CONSOLE
+./drivers/gpu/drm/nouveau/Kconfig:11:	select FRAMEBUFFER_CONSOLE if !EXPERT
+./drivers/gpu/drm/drm_fb_helper.c:1579:/* The Kconfig DRM_KMS_HELPER selects FRAMEBUFFER_CONSOLE (if !EXPERT)
+./drivers/gpu/drm/drm_fb_helper.c:1583:#if defined(CONFIG_FRAMEBUFFER_CONSOLE_MODULE) && !defined(CONFIG_EXPERT)
+./drivers/gpu/drm/rockchip/Kconfig:8:	select VT_HW_CONSOLE_BINDING if FRAMEBUFFER_CONSOLE
+./drivers/gpu/drm/Kconfig:33:	select FRAMEBUFFER_CONSOLE if !EXPERT
+./drivers/gpu/drm/Kconfig:34:	select FRAMEBUFFER_CONSOLE_DETECT_PRIMARY if FRAMEBUFFER_CONSOLE
+./drivers/gpu/drm/exynos/Kconfig:8:	select VT_HW_CONSOLE_BINDING if FRAMEBUFFER_CONSOLE
+./drivers/media/platform/Kconfig:223:	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE
+./drivers/video/console/fbcon.c:118:#ifdef CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY
+./drivers/video/console/fbcon.c:129:#endif /* CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY */
+./drivers/video/console/fbcon.c:198:#ifdef CONFIG_FRAMEBUFFER_CONSOLE_ROTATION
+./drivers/video/console/fbcon.c:271:#endif /* CONFIG_FRAMEBUFFER_CONSOLE_ROTATION */
+./drivers/video/console/fbcon.c:3118:#ifdef CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY
+./drivers/video/console/Makefile:30:obj-$(CONFIG_FRAMEBUFFER_CONSOLE) += fbcon.o bitblit.o font.o softcursor.o
+./drivers/video/console/Makefile:32:obj-$(CONFIG_FRAMEBUFFER_CONSOLE)     += tileblit.o
+./drivers/video/console/Makefile:34:ifeq ($(CONFIG_FRAMEBUFFER_CONSOLE_ROTATION),y)
+./drivers/video/console/Makefile:35:obj-$(CONFIG_FRAMEBUFFER_CONSOLE)     += fbcon_rotate.o fbcon_cw.o fbcon_ud.o \
+./drivers/video/console/Kconfig:90:config FRAMEBUFFER_CONSOLE
+./drivers/video/console/Kconfig:97:config FRAMEBUFFER_CONSOLE_DETECT_PRIMARY
+./drivers/video/console/Kconfig:99:       depends on FRAMEBUFFER_CONSOLE
+./drivers/video/console/Kconfig:113:config FRAMEBUFFER_CONSOLE_ROTATION
+./drivers/video/console/Kconfig:115:       depends on FRAMEBUFFER_CONSOLE
+./drivers/video/console/Kconfig:134:	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE
+./drivers/video/console/Kconfig:147:	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE
+./drivers/video/console/Kconfig:161:	depends on FRAMEBUFFER_CONSOLE || SGI_NEWPORT_CONSOLE || STI_CONSOLE || USB_SISUSBVGA_CON
+./drivers/video/console/Kconfig:171:	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE
+./drivers/video/console/Kconfig:179:	depends on FRAMEBUFFER_CONSOLE
+./drivers/video/console/Kconfig:187:	depends on FRAMEBUFFER_CONSOLE
+./drivers/video/console/Kconfig:195:	depends on FRAMEBUFFER_CONSOLE
+./drivers/video/console/Kconfig:207:	depends on FRAMEBUFFER_CONSOLE && (!SPARC && FONTS || SPARC)
+./drivers/video/console/Kconfig:213:	depends on FRAMEBUFFER_CONSOLE && (!SPARC && FONTS || SPARC)
+./drivers/video/console/Kconfig:221:	depends on FRAMEBUFFER_CONSOLE
+./drivers/video/console/Kconfig:229:	depends on FRAMEBUFFER_CONSOLE || SGI_NEWPORT_CONSOLE || STI_CONSOLE || USB_SISUSBVGA_CON
+./drivers/video/console/fbcon.h:257:#ifdef CONFIG_FRAMEBUFFER_CONSOLE_ROTATION
+./drivers/video/console/fbcon.h:261:#endif /* CONFIG_FRAMEBUFFER_CONSOLE_ROTATION */
+./drivers/video/au1200fb.c:1737:#if !defined(CONFIG_FRAMEBUFFER_CONSOLE) && defined(CONFIG_LOGO)
+./drivers/video/rockchip/rk_fb.c:3766:#if !defined(CONFIG_FRAMEBUFFER_CONSOLE) && defined(CONFIG_LOGO)
+./drivers/video/rockchip/rk_fb_box.c:2982:// #if !defined(CONFIG_FRAMEBUFFER_CONSOLE) && defined(CONFIG_LOGO)
+匹配到二进制文件 ./drivers/video/rockchip/.rk_fb_box.c.swp
+./drivers/video/xilinxfb.c:369:#if !defined(CONFIG_FRAMEBUFFER_CONSOLE) && defined(CONFIG_LOGO)
+./drivers/video/rk29_fb.c:3521:#if !defined(CONFIG_FRAMEBUFFER_CONSOLE) && defined(CONFIG_LOGO)
+./drivers/video/Kconfig:590:	select FONT_8x16 if FRAMEBUFFER_CONSOLE
+./drivers/video/Kconfig:1489:	select FONT_8x16 if FRAMEBUFFER_CONSOLE
+./drivers/video/Kconfig:1698:	select FONT_8x16 if FRAMEBUFFER_CONSOLE
+./drivers/video/Kconfig:1732:	select FONT_8x16 if FRAMEBUFFER_CONSOLE
+./drivers/video/Kconfig:2198:	select VT_HW_CONSOLE_BINDING if FRAMEBUFFER_CONSOLE
+./drivers/video/au1100fb.c:570:#if !defined(CONFIG_FRAMEBUFFER_CONSOLE) && defined(CONFIG_LOGO)
+./.config:2380:# CONFIG_FRAMEBUFFER_CONSOLE is not set
+./config_gfd.gfd:2374:CONFIG_FRAMEBUFFER_CONSOLE=y
+./config_gfd.gfd:2375:CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+./config_gfd.gfd:2376:# CONFIG_FRAMEBUFFER_CONSOLE_ROTATION is not set
+./.config.old:2380:# CONFIG_FRAMEBUFFER_CONSOLE is not set
+./linaro/configs/omap4.conf:130:CONFIG_FRAMEBUFFER_CONSOLE_ROTATION=y
+./linaro/configs/arndale.conf:50:CONFIG_FRAMEBUFFER_CONSOLE=y
+./linaro/configs/distribution.conf:36:CONFIG_FRAMEBUFFER_CONSOLE=y
+./linaro/configs/vexpress64.conf:14:CONFIG_FRAMEBUFFER_CONSOLE=y
+./Documentation/x86/x86_64/uefi.txt:21:	CONFIG_FRAMEBUFFER_CONSOLE=y
+./Documentation/fb/fbcon.txt:200:2. In your kernel configuration, ensure that CONFIG_FRAMEBUFFER_CONSOLE is set
+./.configold:2378:# CONFIG_FRAMEBUFFER_CONSOLE is not set
+./arch/m32r/configs/m32700ut.smp_defconfig:71:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/m32r/configs/m32700ut.up_defconfig:70:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/se7780_defconfig:72:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/sh2007_defconfig:95:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/sh2007_defconfig:96:CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+./arch/sh/configs/sh7763rdp_defconfig:66:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/ap325rxa_defconfig:83:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/migor_defconfig:80:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/migor_defconfig:81:CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+./arch/sh/configs/espt_defconfig:66:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/sdk7780_defconfig:81:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/sdk7780_defconfig:82:CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+./arch/sh/configs/apsh4a3a_defconfig:64:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/sh7785lcr_32bit_defconfig:95:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/sh7785lcr_32bit_defconfig:96:CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+./arch/sh/configs/se7724_defconfig:88:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/hp6xx_defconfig:46:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/urquell_defconfig:95:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/rts7751r2d1_defconfig:55:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/rts7751r2dplus_defconfig:63:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/cayman_defconfig:46:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/ecovec24_defconfig:90:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/dreamcast_defconfig:63:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/kfr2r09_defconfig:70:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/kfr2r09_defconfig:71:CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+./arch/sh/configs/sh7785lcr_defconfig:67:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sh/configs/apsh4ad0a_defconfig:90:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/chrp32_defconfig:105:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/85xx/socrates_defconfig:85:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/ppc6xx_defconfig:858:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/ppc6xx_defconfig:859:CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+./arch/powerpc/configs/ppc6xx_defconfig:860:CONFIG_FRAMEBUFFER_CONSOLE_ROTATION=y
+./arch/powerpc/configs/44x/virtex5_defconfig:61:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/44x/icon_defconfig:86:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/44x/sam440ep_defconfig:66:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/44x/sam440ep_defconfig:67:CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+./arch/powerpc/configs/mpc512x_defconfig:116:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/86xx/mpc8610_hpcd_defconfig:93:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/ppc64_defconfig:285:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/40x/virtex_defconfig:62:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/mpc5200_defconfig:88:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/83xx/mpc836x_rdk_defconfig:68:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/mpc85xx_smp_defconfig:166:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/ppc64e_defconfig:217:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/g5_defconfig:153:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/mpc85xx_defconfig:166:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/amigaone_defconfig:100:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/52xx/tqm5200_defconfig:78:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/gamecube_defconfig:70:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/pmac32_defconfig:257:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/ps3_defconfig:113:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/ps3_defconfig:114:CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+./arch/powerpc/configs/ps3_defconfig:115:CONFIG_FRAMEBUFFER_CONSOLE_ROTATION=y
+./arch/powerpc/configs/pseries_defconfig:234:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/powerpc/configs/wii_defconfig:94:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/m68k/kernel/setup_no.c:234:#if defined(CONFIG_FRAMEBUFFER_CONSOLE) && defined(CONFIG_DUMMY_CONSOLE)
+./arch/m68k/kernel/head.S:270:#ifdef CONFIG_FRAMEBUFFER_CONSOLE
+./arch/m68k/configs/q40_defconfig:301:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/m68k/configs/sun3_defconfig:288:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/m68k/configs/amiga_defconfig:331:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/m68k/configs/mac_defconfig:319:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/m68k/configs/hp300_defconfig:294:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/m68k/configs/atari_defconfig:306:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/m68k/configs/apollo_defconfig:291:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/m68k/configs/sun3x_defconfig:288:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/m68k/configs/multi_defconfig:381:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sparc/configs/sparc64_defconfig:149:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/sparc/configs/sparc64_defconfig:150:CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+./arch/mips/configs/ip32_defconfig:96:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/mips/configs/fuloong2e_defconfig:175:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/mips/configs/lemote2f_defconfig:228:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/mips/configs/lemote2f_defconfig:229:CONFIG_FRAMEBUFFER_CONSOLE_ROTATION=y
+./arch/mips/configs/malta_defconfig:338:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/mips/configs/malta_kvm_defconfig:339:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/mips/configs/db1000_defconfig:203:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/mips/configs/db1000_defconfig:204:CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+./arch/mips/configs/malta_kvm_guest_defconfig:341:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/mips/configs/tb0287_defconfig:84:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/arm/configs/firefly-rk3288-linux_defconfig:2374:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/arm/configs/firefly-rk3288-linux_defconfig:2375:CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+./arch/arm/configs/firefly-rk3288-linux_defconfig:2376:# CONFIG_FRAMEBUFFER_CONSOLE_ROTATION is not set
+./arch/unicore32/configs/unicore32_defconfig:135:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/arc/configs/nsimosci_defconfig:64:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/parisc/configs/default_defconfig:121:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/parisc/configs/b180_defconfig:73:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/parisc/configs/712_defconfig:101:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/parisc/configs/c3000_defconfig:113:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/arm64/configs/defconfig:63:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/blackfin/configs/BF527-EZKIT-V2_defconfig:122:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/blackfin/configs/BF527-EZKIT_defconfig:116:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/blackfin/configs/BF527-AD7160-EVAL_defconfig:76:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/blackfin/configs/BF527-AD7160-EVAL_defconfig:77:CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+./arch/blackfin/configs/BF527-TLL6527M_defconfig:129:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/blackfin/configs/BF548-EZKIT_defconfig:130:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/avr32/configs/merisc_defconfig:101:CONFIG_FRAMEBUFFER_CONSOLE=y
+./arch/avr32/configs/hammerhead_defconfig:96:CONFIG_FRAMEBUFFER_CONSOLE=y

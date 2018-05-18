@@ -1,3 +1,0 @@
-kernel/drivers/hwmon/hwmon.ko
-kernel/drivers/hwmon/rockchip-hwmon.ko
-kernel/drivers/hwmon/rockchip_tsadc.ko
